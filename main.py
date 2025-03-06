@@ -2,10 +2,9 @@
 
 import orjson
 from fastapi import FastAPI
-
 from langchain_openai import ChatOpenAI
-
 from langchain_core.messages import HumanMessage, SystemMessage
+from transformers import pipeline
 
 
 llm = ChatOpenAI(
@@ -47,3 +46,18 @@ async def extract(req: dict):
     print(response.content)
 
     return orjson.loads(response.content)
+
+@app.post("/translate/")
+async def translate(req: dict):
+    # Load the pipeline for automatic speech recognition (ASR)
+    asr_pipeline = pipeline(task="automatic-speech-recognition", model="openai/whisper-small")
+
+    # Path to the audio file
+    audio_file = "./data/cwd.wav"
+
+    # Perform the transcription
+    result = asr_pipeline(audio_file)
+
+    # Print the transcribed text
+    print("Transcribed text:", result["text"])
+    return {}
