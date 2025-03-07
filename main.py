@@ -1,6 +1,7 @@
 # main.py
 
 import orjson
+import datetime
 from fastapi import FastAPI
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -31,11 +32,11 @@ async def root():
     return "teller chatbot service"
 
 @app.post("/extract/")
-async def extract(req: dict):
-    
-    print(req['action'])
+async def extract(req: dict) -> dict:
+
+    print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') +" start " + req['action'])
     '''
-    text_message = "I want to withdraw 600 hong kong dollars from my credit account, and print receipt"
+    text_message = "I want to withdraw 600 hong kong dollars from my saving account, and print receipt"
 
     # Define the messages for extraction
     messages = [
@@ -44,31 +45,68 @@ async def extract(req: dict):
     ]
     
     '''
-
+    if req is None:
+        return {
+            "success": False,
+            "reason": "req is empty"
+        }
     dataFormat = req['format']
     text = req['text']
     template = req['template']
     message = [
-        ("system", f"You are a helpful assistant that extracts data from text messages and Always answer in the following json format: {dataFormat}"),
+        ("system", f"You are a helpful assistant that extracts data from text messages and always answer in the following json format: {dataFormat}"),
         ("human", f"{template}: {text}")
     ]
-    # Get the extracted data
 
-    response = llm.invoke(message)
-    print(response.content)
-    return response.content
+    if dataFormat is None or text is None or template is None or message is None:
+        return {
+            "success": False,
+            "reason": "some parameter is empty"
+        }
+    
+    result = {
+        "success": False,
+        "reason": ""
+    }
+    try:
+        # Get the extracted data
+        response = llm.invoke(message)
+        result['success'] = True
+        result['text'] = response.content
+    except:
+        print("exception occurs")
+        return {
+            "success": False,
+            "reason": "exception occurs"
+        }
+    
+    print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') +" complete " + req['action'])
+    return result
 
 @app.post("/transcribe/")
-async def transcribe(req: dict) -> str:
+async def transcribe(req: dict) -> dict:
+    print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') +" start " + req['action'])
     # Load the pipeline for automatic speech recognition (ASR)
     asr_pipeline = pipeline(task="automatic-speech-recognition", model="openai/whisper-small")
 
     # Path to the audio file
     audio_file = "./data/cwd.wav"
 
-    # Perform the transcription
-    result = asr_pipeline(audio_file)
+    result = {
+        "success": False,
+        "reason": ""
+    }
+    try:
+        # Perform the transcription
+        response = asr_pipeline(audio_file)
+        if response is not None:
+            result['success'] = True
+            result['text'] = response["text"]
+    except:
+        result['reason'] = "exception"
+        print("exception occurs")
 
     # Print the transcribed text
     #print("Transcribed text:", result["text"])
-    return result["text"]
+    print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') +" complete " + req['action'])
+    return result
