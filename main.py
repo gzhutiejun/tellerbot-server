@@ -1,6 +1,5 @@
 # main.py
 
-import orjson
 import datetime
 from fastapi import FastAPI
 from langchain_openai import ChatOpenAI
@@ -16,7 +15,7 @@ llm = ChatOpenAI(
     max_tokens=2000,
 )
 
-
+'''
 json_data_format = orjson.dumps({
   "amount": 0,
   "currency": '',
@@ -24,6 +23,7 @@ json_data_format = orjson.dumps({
   "transactionType": '',
   "receiptRequired": False
 })
+'''
 
 app = FastAPI()
 
@@ -72,7 +72,7 @@ async def extract(req: dict) -> dict:
         # Get the extracted data
         response = llm.invoke(message)
         result['success'] = True
-        result['text'] = response.content
+        result['data'] = response.content
     except:
         print("exception occurs")
         return {
@@ -101,7 +101,7 @@ async def transcribe(req: dict) -> dict:
         response = asr_pipeline(audio_file)
         if response is not None:
             result['success'] = True
-            result['text'] = response["text"]
+            result['transcribedText'] = response["text"]
     except:
         result['reason'] = "exception"
         print("exception occurs")
