@@ -33,7 +33,15 @@ async def root():
 
 @app.post("/extract/")
 async def extract(req: dict) -> dict:
+    result = {
+        "success": False,
+        "reason": ""
+    }
 
+    if req is None or not 'action' in req or not 'template' in req or not 'format' in req or not 'text' in req:
+        result['reason'] = "parameter is invalid"
+        return result
+    
     print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') +" start " + req['action'])
     '''
     text_message = "I want to withdraw 600 hong kong dollars from my saving account, and print receipt"
@@ -59,15 +67,9 @@ async def extract(req: dict) -> dict:
     ]
 
     if dataFormat is None or text is None or template is None or message is None:
-        return {
-            "success": False,
-            "reason": "some parameter is empty"
-        }
+        result['reason'] = "parameter is invalid"
+        return result
     
-    result = {
-        "success": False,
-        "reason": ""
-    }
     try:
         # Get the extracted data
         response = llm.invoke(message)
@@ -85,6 +87,15 @@ async def extract(req: dict) -> dict:
 
 @app.post("/transcribe/")
 async def transcribe(req: dict) -> dict:
+    result = {
+        "success": False,
+        "reason": ""
+    }
+    
+    if req is None or not 'action' in req:
+        result['reason'] = "parameter is invalid"
+        return result
+    
     print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') +" start " + req['action'])
     # Load the pipeline for automatic speech recognition (ASR)
     asr_pipeline = pipeline(task="automatic-speech-recognition", model="openai/whisper-small")
@@ -92,16 +103,12 @@ async def transcribe(req: dict) -> dict:
     # Path to the audio file
     audio_file = "./data/cwd.wav"
 
-    result = {
-        "success": False,
-        "reason": ""
-    }
     try:
         # Perform the transcription
         response = asr_pipeline(audio_file)
         if response is not None:
             result['success'] = True
-            result['transcribedText'] = response["text"]
+            result['transcript'] = response["text"]
     except:
         result['reason'] = "exception"
         print("exception occurs")
