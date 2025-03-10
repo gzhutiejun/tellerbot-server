@@ -1,6 +1,7 @@
 # main.py
 
 import datetime
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -27,9 +28,23 @@ json_data_format = orjson.dumps({
 
 app = FastAPI()
 
+origins = ["*"]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
 @app.get("/")
 async def root():
     return "teller chatbot service"
+
+@app.get("/status/")
+async def root():
+    return {"success": True}
 
 @app.post("/extract/")
 async def extract(req: dict) -> dict:
@@ -85,6 +100,11 @@ async def extract(req: dict) -> dict:
     print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') +" complete " + req['action'])
     return result
 
+@app.post("/upload-audio-file/")
+async def upload_file(req):
+    print(req)
+    return {"success": True}
+
 @app.post("/transcribe/")
 async def transcribe(req: dict) -> dict:
     result = {
@@ -97,11 +117,17 @@ async def transcribe(req: dict) -> dict:
         return result
     
     print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') +" start " + req['action'])
+
     # Load the pipeline for automatic speech recognition (ASR)
     asr_pipeline = pipeline(task="automatic-speech-recognition", model="openai/whisper-small")
 
-    # Path to the audio file
-    audio_file = "./data/cwd.wav"
+    audio_file = ""
+    if "audio" in req:
+        audioData = req['audio']
+
+    else:
+        # Path to the audio file
+        audio_file = "./data/cwd.wav"
 
     try:
         # Perform the transcription
