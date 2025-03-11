@@ -1,12 +1,12 @@
 # main.py
 
 import datetime
+import uuid
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 from transformers import pipeline
-
 
 llm = ChatOpenAI(
     api_key="ollama",
@@ -15,16 +15,6 @@ llm = ChatOpenAI(
     temperature=0,
     max_tokens=2000,
 )
-
-'''
-json_data_format = orjson.dumps({
-  "amount": 0,
-  "currency": '',
-  "accountType": '',
-  "transactionType": '',
-  "receiptRequired": False
-})
-'''
 
 app = FastAPI()
 
@@ -37,7 +27,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
 @app.get("/")
 async def root():
     return "teller chatbot service"
@@ -45,6 +34,25 @@ async def root():
 @app.get("/status/")
 async def root():
     return {"success": True}
+
+@app.post("/opensession/")
+async def open_session(req: dict) -> dict:
+    id: uuid.UUID = uuid.uuid1()
+    return {
+        "success": True,
+        "session_id": id
+    }
+
+@app.post("/closesession/")
+async def close_session(req: dict) -> dict:
+    id = None
+    if "session_id" in req:
+        id = req['session_id']
+    print(id)
+    return {
+        "success": True,
+        "session_id": id
+    }
 
 @app.post("/extract/")
 async def extract(req: dict) -> dict:
@@ -99,15 +107,16 @@ async def extract(req: dict) -> dict:
 
 @app.post("/upload")
 async def upload(file: UploadFile = File(...)):
+    filename = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')+".mp3"
     try:
-        with open(file.filename, 'wb') as f:
+        with open(filename, 'wb') as f:
             while contents := file.file.read(1024 * 1024):
                 f.write(contents)
     except Exception:
         raise HTTPException(status_code=500, detail='Something went wrong')
     finally:
         file.file.close()
-    return {"success": True}
+    return {"success": True, "file_name": filename}
 
 @app.post("/transcribe/")
 async def transcribe(req: dict) -> dict:
