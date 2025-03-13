@@ -98,8 +98,8 @@ async def extract(req: dict) -> dict:
         response = llm.invoke(message)
         result['success'] = True
         result['data'] = response.content
-    except Exception:
-        print("exception occurs")
+    except Exception as error:
+        print("exception occurs", error)
         raise HTTPException(status_code=500, detail='Something went wrong')
     
     print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') +" complete " + req['action'])
@@ -107,50 +107,46 @@ async def extract(req: dict) -> dict:
 
 @app.post("/upload")
 async def upload(file: UploadFile = File(...)):
-    filename = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')+".mp3"
+    filename ="./data/" + datetime.datetime.now().strftime('%Y%m%d_%H%M%S')+".mp3"
     try:
         with open(filename, 'wb') as f:
             while contents := file.file.read(1024 * 1024):
                 f.write(contents)
-    except Exception:
+    except Exception as error:
+        print("exception occurs", error)
         raise HTTPException(status_code=500, detail='Something went wrong')
     finally:
         file.file.close()
-    return {"success": True, "file_name": filename}
+    return {"success": True, "file_path": filename}
 
 @app.post("/transcribe/")
 async def transcribe(req: dict) -> dict:
     result = {
         "success": False,
-        "reason": ""
+        "reason": "",
     }
     
-    if req is None or not 'action' in req:
+    if req is None or 'action' not in req or "file_path" not in req:
         result['reason'] = "parameter is invalid"
         return result
     
     print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') +" start " + req['action'])
 
-    # Load the pipeline for automatic speech recognition (ASR)
-    asr_pipeline = pipeline(task="automatic-speech-recognition", model="openai/whisper-small")
-
-    audio_file = ""
-    if "audio" in req:
-        audioData = req['audio']
-
-    else:
-        # Path to the audio file
-        audio_file = "./data/cwd.wav"
-
     try:
+        # Load the pipeline for automatic speech recognition (ASR)
+        asr_pipeline = pipeline(task="automatic-speech-recognition", model="openai/whisper-small")
+
+        # audio_file = "./data/cwd.wav"
+        audio_file = req['file_path']
+
         # Perform the transcription
         response = asr_pipeline(audio_file)
         if response is not None:
             result['success'] = True
             result['transcript'] = response["text"]
-    except Exception:
+    except Exception as error:
         result['reason'] = "exception"
-        print("exception occurs")
+        print("exception occurs", error)
         raise HTTPException(status_code=500, detail='Something went wrong')
 
     # Print the transcribed text
