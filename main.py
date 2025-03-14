@@ -4,9 +4,12 @@ import datetime
 import uuid
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi.responses import FileResponse
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 from transformers import pipeline
+from gtts import gTTS
+import os
 
 llm = ChatOpenAI(
     api_key="ollama",
@@ -119,6 +122,15 @@ async def upload(file: UploadFile = File(...)):
         file.file.close()
     return {"success": True, "file_path": filename}
 
+@app.get("/download/{file_path}")
+async def download_file(file_path: str) -> FileResponse:
+    print("download",file_path)
+    if os.path.exists("./data/" + file_path):
+        return FileResponse(path="./data/" + file_path, filename="teller.mp3")
+    else:
+        raise HTTPException(status_code=404, detail="File not found")
+
+
 @app.post("/transcribe/")
 async def transcribe(req: dict) -> dict:
     result = {
@@ -151,5 +163,39 @@ async def transcribe(req: dict) -> dict:
 
     # Print the transcribed text
     #print("Transcribed text:", result["text"])
+    print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') +" complete " + req['action'])
+    return result
+
+@app.post("/generateaudio/")
+async def generate_audio(req: dict) -> dict:
+    result = {
+        "success": False,
+        "reason": "",
+    }
+
+    if req is None or 'action' not in req or "text" not in req:
+        result['reason'] = "parameter is invalid"
+        return result
+    
+    print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') +" start " + req['action'])
+
+    try:
+        # Define the text to be synthesized
+        text = req['text']
+        lang = req['lang'] if 'lang' in req else 'en'
+        # Initialize the TTS engine
+        tts = gTTS(text=text, lang=lang)
+        
+        # Save the speech to an audio file
+ 
+        result['success'] = True
+        file_name = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')+".mp3"
+        result['file_name'] = file_name
+        tts.save("./data/" + file_name)
+    except Exception as error:
+        result['reason'] = "exception"
+        print("exception occurs", error)
+        raise HTTPException(status_code=500, detail='Something went wrong')
+
     print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') +" complete " + req['action'])
     return result
