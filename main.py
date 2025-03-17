@@ -4,7 +4,7 @@ import datetime
 import uuid
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, File, UploadFile, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 from transformers import pipeline
@@ -123,13 +123,45 @@ async def upload(file: UploadFile = File(...)):
     return {"success": True, "file_path": filename}
 
 @app.get("/download/{file_path}")
-async def download_file(file_path: str) -> FileResponse:
-    print("download",file_path)
-    if os.path.exists("./data/" + file_path):
-        return FileResponse(path="./data/" + file_path, filename="teller.mp3")
-    else:
+async def download_file(file_path: str, range: str = None) -> StreamingResponse:
+    print("download", file_path)
+    file_path_full = "./data/" + file_path
+    if not os.path.exists(file_path_full):
         raise HTTPException(status_code=404, detail="File not found")
 
+    file_size = os.path.getsize(file_path_full)
+    headers = {"Accept-Ranges": "bytes"}
+
+    def file_stream(start: int, end: int):
+        with open(file_path_full, "rb") as f:
+            f.seek(start)
+            while start < end:
+                chunk_size = min(1024 * 1024, end - start)
+                data = f.read(chunk_size)
+                if not data:
+                    break
+                start += len(data)
+                yield data
+
+    if range:
+        try:
+            range_start, range_end = range.replace("bytes=", "").split("-")
+            range_start = int(range_start) if range_start else 0
+            range_end = int(range_end) if range_end else file_size - 1
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid range header")
+
+        if range_start >= file_size or range_end >= file_size or range_start > range_end:
+            raise HTTPException(status_code=416, detail="Requested Range Not Satisfiable")
+
+        headers.update({
+            "Content-Range": f"bytes {range_start}-{range_end}/{file_size}",
+            "Content-Length": str(range_end - range_start + 1),
+        })
+        return StreamingResponse(file_stream(range_start, range_end + 1), headers=headers, status_code=206)
+
+    headers["Content-Length"] = str(file_size)
+    return StreamingResponse(file_stream(0, file_size), headers=headers)
 
 @app.post("/transcribe/")
 async def transcribe(req: dict) -> dict:
