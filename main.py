@@ -1,37 +1,19 @@
 # main.py
 
 import datetime
+from ollama import chat
 import uuid
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, File, UploadFile, HTTPException
-from fastapi.responses import FileResponse, StreamingResponse
-from langchain_openai import ChatOpenAI
-from langchain_core.messages import HumanMessage, SystemMessage
+from fastapi.responses import StreamingResponse
 from transformers import pipeline
 from gtts import gTTS
 import os
 
-llm = ChatOpenAI(
-    api_key="ollama",
-    model="llama3.2",
-    base_url="http://localhost:11434/v1/",
-    temperature=0,
-    max_tokens=2000,
-)
+from model import SessionModel, TransactionModel
+from util import check_and_create_folder
 
-audio_folder = "audio"
-def check_and_create_folder(folder_path):
-    if not os.path.exists(folder_path):
-        os.makedirs(folder_path)
-        print(f"Folder '{folder_path}' created.")
-
-def get_audio_folder(current_time: datetime):
-    subfolder = current_time.strftime('%Y%m%d')
-    full_folder = audio_folder +'/'+ subfolder
-    check_and_create_folder(full_folder)
-    return full_folder
-
-check_and_create_folder(audio_folder)
+check_and_create_folder()
 
 app = FastAPI()
 
@@ -79,43 +61,32 @@ async def extract(req: dict) -> dict:
         "reason": ""
     }
 
-    if req is None or not 'action' in req or not 'template' in req or not 'format' in req or not 'text' in req:
+    if req is None or 'schema' not in req or 'text' not in req:
         result['reason'] = "parameter is invalid"
         return result
     
     print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') +" start " + req['action'])
-    '''
-    text_message = "I want to withdraw 600 hong kong dollars from my saving account, and print receipt"
 
-    # Define the messages for extraction
-    messages = [
-        ("system", "You are a helpful assistant that extracts data from text messages and Always answer in the following json format: {json_data_format}"),
-        ("human", f"Extract data from the following text message, including number or amount, currency, account type, transaction type and if receipt is required: {text_message}")
-    ]
-    
-    '''
-    if req is None:
-        return {
-            "success": False,
-            "reason": "req is empty"
-        }
-    dataFormat = req['format']
     text = req['text']
-    template = req['template']
-    message = [
-        ("system", f"You are a helpful assistant that extracts data from text messages and always answer in the following json format: {dataFormat}"),
-        ("human", f"{template}: {text}")
-    ]
-
-    if dataFormat is None or text is None or template is None or message is None:
-        result['reason'] = "parameter is invalid"
-        return result
+    schema = req['schema']
+    json_schema = SessionModel.model_json_schema()
     
+    if schema == "transaction":
+        json_schema = TransactionModel.model_json_schema()
     try:
         # Get the extracted data
-        response = llm.invoke(message)
+        response = chat(
+            model="llama3.2",
+            messages=[
+                {
+                    "role": "user",
+                    "content": text,
+                }
+            ],
+            format= json_schema
+        )
         result['success'] = True
-        result['data'] = response.content
+        result['data'] = response.message.content
     except Exception as error:
         print("exception occurs", error)
         raise HTTPException(status_code=500, detail='Something went wrong')
