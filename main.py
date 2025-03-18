@@ -11,7 +11,7 @@ from gtts import gTTS
 import os
 
 from model import getJsonSchema
-from util import check_and_create_folder
+from util import check_and_create_folder, get_audio_folder
 
 check_and_create_folder()
 
@@ -69,7 +69,7 @@ async def extract(req: dict) -> dict:
 
     text = req['text']
     schema = req['schema']
-
+    print(text, schema)
     try:
         # Get the extracted data
         response = chat(
