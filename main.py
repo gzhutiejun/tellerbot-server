@@ -19,6 +19,20 @@ llm = ChatOpenAI(
     max_tokens=2000,
 )
 
+audio_folder = "audio"
+def check_and_create_folder(folder_path):
+    if not os.path.exists(folder_path):
+        os.makedirs(folder_path)
+        print(f"Folder '{folder_path}' created.")
+
+def get_audio_folder(current_time: datetime):
+    subfolder = current_time.strftime('%Y%m%d')
+    full_folder = audio_folder +'/'+ subfolder
+    check_and_create_folder(full_folder)
+    return full_folder
+
+check_and_create_folder(audio_folder)
+
 app = FastAPI()
 
 origins = ["*"]
@@ -29,6 +43,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 @app.get("/")
 async def root():
@@ -110,9 +125,11 @@ async def extract(req: dict) -> dict:
 
 @app.post("/upload")
 async def upload(file: UploadFile = File(...)):
-    filename ="./data/" + datetime.datetime.now().strftime('%Y%m%d_%H%M%S')+".mp3"
+    current_time = datetime.datetime.now()
+    full_file_path = get_audio_folder(current_time) + '/' + current_time.strftime('%H%M%S-customer')+".mp3"
+    
     try:
-        with open(filename, 'wb') as f:
+        with open(full_file_path, 'wb') as f:
             while contents := file.file.read(1024 * 1024):
                 f.write(contents)
     except Exception as error:
@@ -120,15 +137,25 @@ async def upload(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail='Something went wrong')
     finally:
         file.file.close()
-    return {"success": True, "file_path": filename}
+    return {"success": True, "file_path": full_file_path.replace('/','.')}
 
 @app.get("/download/{file_path}")
 async def download_file(file_path: str, range: str = None) -> StreamingResponse:
     print("download", file_path)
-    file_path_full = "./data/" + file_path
-    if not os.path.exists(file_path_full):
+
+    if file_path is None:
         raise HTTPException(status_code=404, detail="File not found")
 
+    file_path_full = ""
+    try:    
+        temp = file_path.split('.')
+        file_path_full = './' + temp[0] + '/' + temp[1]+ '/'+ temp[2] + '.' + temp[3]
+    except:
+        raise HTTPException(status_code=404, detail="File not found")
+    
+    if not os.path.exists(file_path_full) or file_path is None:
+        raise HTTPException(status_code=404, detail="File not found")
+    
     file_size = os.path.getsize(file_path_full)
     headers = {"Accept-Ranges": "bytes"}
 
@@ -176,15 +203,28 @@ async def transcribe(req: dict) -> dict:
     
     print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') +" start " + req['action'])
 
+    file_path = req['file_path']
+    if file_path is None:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    file_path_full = ""
+    try:    
+        temp = file_path.split('.')
+        print('temp', temp)
+
+        file_path_full = './' + temp[0] + '/' + temp[1]+ '/'+ temp[2] + '.' + temp[3]
+    except:
+        raise HTTPException(status_code=404, detail="File not found")
+    
+    if not os.path.exists(file_path_full) or file_path is None:
+        raise HTTPException(status_code=404, detail="File not found")
+    
     try:
         # Load the pipeline for automatic speech recognition (ASR)
         asr_pipeline = pipeline(task="automatic-speech-recognition", model="openai/whisper-small")
 
-        # audio_file = "./data/cwd.wav"
-        audio_file = req['file_path']
-
         # Perform the transcription
-        response = asr_pipeline(audio_file)
+        response = asr_pipeline(file_path_full)
         if response is not None:
             result['success'] = True
             result['transcript'] = response["text"]
@@ -221,9 +261,12 @@ async def generate_audio(req: dict) -> dict:
         # Save the speech to an audio file
  
         result['success'] = True
-        file_name = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')+".mp3"
-        result['file_name'] = file_name
-        tts.save("./data/" + file_name)
+        current_time = datetime.datetime.now()
+        file_path = get_audio_folder(current_time)
+        file_name = current_time.strftime('%H%M%S-teller')+".mp3"
+        result['file_name'] = file_path.replace('/','.') + '.'+ file_name
+
+        tts.save(file_path + '/'+ file_name)
     except Exception as error:
         result['reason'] = "exception"
         print("exception occurs", error)
