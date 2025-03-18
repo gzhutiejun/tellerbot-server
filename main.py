@@ -10,7 +10,7 @@ from transformers import pipeline
 from gtts import gTTS
 import os
 
-from model import SessionModel, TransactionModel
+from model import getJsonSchema
 from util import check_and_create_folder
 
 check_and_create_folder()
@@ -69,10 +69,7 @@ async def extract(req: dict) -> dict:
 
     text = req['text']
     schema = req['schema']
-    json_schema = SessionModel.model_json_schema()
-    
-    if schema == "transaction":
-        json_schema = TransactionModel.model_json_schema()
+
     try:
         # Get the extracted data
         response = chat(
@@ -81,9 +78,17 @@ async def extract(req: dict) -> dict:
                 {
                     "role": "user",
                     "content": text,
+                },
+                {
+                    "role": "user",
+                    "content": "set property 'answer' to true if %{text} contains yes",
+                },
+                {
+                    "role": "user",
+                    "content": "set property 'cancelled' to true if %{text} contains cancel or exit, otherwise set to false",
                 }
             ],
-            format= json_schema
+            format= getJsonSchema(schema)
         )
         result['success'] = True
         result['data'] = response.message.content
