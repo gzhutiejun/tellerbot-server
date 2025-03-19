@@ -102,12 +102,16 @@ async def extract(req: dict) -> dict:
 @app.post("/upload")
 async def upload(file: UploadFile = File(...)):
     current_time = datetime.datetime.now()
-    full_file_path = get_audio_folder(current_time) + '/' + current_time.strftime('%H%M%S-customer')+".mp3"
+
+    #if not file.content_type.startswith("audio/"):
+        #raise HTTPException(status_code=400, detail="Invalid file type. Only audio files are allowed.")
     
+    full_file_path = get_audio_folder(current_time) + '/' + current_time.strftime('%H%M%S-customer')+".webm"
+    print("file size:",file.size)
     try:
         with open(full_file_path, 'wb') as f:
-            while contents := file.file.read(1024 * 1024):
-                f.write(contents)
+            content = await file.read()
+            f.write(content)
     except Exception as error:
         print("exception occurs", error)
         raise HTTPException(status_code=500, detail='Something went wrong')
@@ -201,7 +205,7 @@ async def transcribe(req: dict) -> dict:
         # Load the Whisper model
         model = whisper.load_model("small")
         # Transcribe the audio file
-        response = model.transcribe(file_path_full, fp16=False, language="en")
+        response = model.transcribe(file_path_full, fp16=False, language="en",temperature=1)
         if response is not None:
             result['success'] = True
             result['transcript'] = response["text"]
@@ -240,7 +244,7 @@ async def generate_audio(req: dict) -> dict:
         result['success'] = True
         current_time = datetime.datetime.now()
         file_path = get_audio_folder(current_time)
-        file_name = current_time.strftime('%H%M%S-teller')+".mp3"
+        file_name = current_time.strftime('%H%M%S-teller')+".webm"
         result['file_name'] = file_path.replace('/','.') + '.'+ file_name
 
         tts.save(file_path + '/'+ file_name)
