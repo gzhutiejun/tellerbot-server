@@ -72,7 +72,7 @@ async def extract(req: dict) -> dict:
         result['reason'] = "parameter is invalid"
         return result
     
-    print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " start " + req['action'])
+    print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " extract start")
 
     text = req['text']
     format = req['format']
@@ -96,17 +96,14 @@ async def extract(req: dict) -> dict:
         print("exception occurs", error)
         raise HTTPException(status_code=500, detail='Something went wrong')
     
-    print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " complete " + req['action'])
+    print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " extract complete ")
     return result
 
 @app.post("/upload")
 async def upload(file: UploadFile = File(...)):
     current_time = datetime.datetime.now()
 
-    #if not file.content_type.startswith("audio/"):
-        #raise HTTPException(status_code=400, detail="Invalid file type. Only audio files are allowed.")
-    
-    full_file_path = get_audio_folder(current_time) + '/' + current_time.strftime('%H%M%S-customer')+".webm"
+    full_file_path = get_audio_folder(current_time) + '/' + current_time.strftime('%H%M%S-customer')+".mp3"
     print("file size:",file.size)
     try:
         with open(full_file_path, 'wb') as f:
@@ -177,11 +174,11 @@ async def transcribe(req: dict) -> dict:
         "reason": "",
     }
     
-    if req is None or 'action' not in req or "file_path" not in req:
+    if req is None or "file_path" not in req:
         result['reason'] = "parameter is invalid"
         return result
     
-    print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') +" start " + req['action'])
+    print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') +" transcribe start")
 
     file_path = req['file_path']
     if file_path is None:
@@ -216,7 +213,7 @@ async def transcribe(req: dict) -> dict:
 
     # Print the transcribed text
     #print("Transcribed text:", result["text"])
-    print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') +" complete " + req['action'])
+    print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') +" transcribe complete ")
     return result
 
 @app.post("/generateaudio/")
@@ -226,11 +223,11 @@ async def generate_audio(req: dict) -> dict:
         "reason": "",
     }
 
-    if req is None or 'action' not in req or "text" not in req:
+    if req is None or "text" not in req:
         result['reason'] = "parameter is invalid"
         return result
     
-    print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') +" start " + req['action'])
+    print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') +" generateaudio start ")
 
     try:
         # Define the text to be synthesized
@@ -244,7 +241,7 @@ async def generate_audio(req: dict) -> dict:
         result['success'] = True
         current_time = datetime.datetime.now()
         file_path = get_audio_folder(current_time)
-        file_name = current_time.strftime('%H%M%S-teller')+".webm"
+        file_name = current_time.strftime('%H%M%S-teller')+".mp3"
         result['file_name'] = file_path.replace('/','.') + '.'+ file_name
 
         tts.save(file_path + '/'+ file_name)
@@ -253,7 +250,7 @@ async def generate_audio(req: dict) -> dict:
         print("exception occurs", error)
         raise HTTPException(status_code=500, detail='Something went wrong')
 
-    print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') +" complete " + req['action'])
+    print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') +" generateaudio complete ")
     return result
 
 if __name__ == "__main__":
