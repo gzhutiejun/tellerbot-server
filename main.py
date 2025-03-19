@@ -72,18 +72,19 @@ async def extract(req: dict) -> dict:
         result['reason'] = "parameter is invalid"
         return result
     
-    print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') +" start " + req['action'])
+    print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " start " + req['action'])
 
     text = req['text']
     format = req['format']
     json_format = serialize_json_object(format)
-    instruction =  req['instruction']
+    instruction = req['instruction']
     print(text)
     try:
         # Define the messages for extraction
         messages = [
-            ("system", f"You are a helpful bank teller, you know about bank services, you can help to extract data according to {json_format}"),
-            ("human", f"{instruction} according to {text}")
+            ("system", f"You are ChatOpenAI, a helpful assistant. Your task is to extract structured data from user messages. "
+                       f"Your task is to extract information from user-provided text and oAlways respond with the extracted data in a JSON format as {json_format}"),
+            ("human", f"Here is the instruction: {instruction}; if cancel or exit, set cancel property to true; If there is no mentioned data, return null. Extract the data from the following text: {text}" )
         ]
 
         # Get the extracted data
@@ -95,7 +96,7 @@ async def extract(req: dict) -> dict:
         print("exception occurs", error)
         raise HTTPException(status_code=500, detail='Something went wrong')
     
-    print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') +" complete " + req['action'])
+    print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " complete " + req['action'])
     return result
 
 @app.post("/upload")
