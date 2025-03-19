@@ -1,5 +1,6 @@
 import datetime
 import os
+import json
 
 audio_folder = "audio"
 def check_and_create_folder(folder_path=audio_folder):
@@ -12,3 +13,13 @@ def get_audio_folder(current_time: datetime):
     full_folder = audio_folder +'/'+ subfolder
     check_and_create_folder(full_folder)
     return full_folder
+
+def serialize_json_object(jsonObj: dict):
+    if (jsonObj is None):
+        return ""
+    try:
+        ret = json.dumps(jsonObj)
+        return ret
+    except Exception as error:
+        print("serialize_json_object", error)
+        return ""

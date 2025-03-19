@@ -1,17 +1,24 @@
 # main.py
 
 import datetime
-from ollama import chat
 import uuid
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import StreamingResponse
-from transformers import pipeline
 from gtts import gTTS
 import os
+import whisper
+from langchain_openai import ChatOpenAI
 
-from model import getJsonSchema
-from util import check_and_create_folder, get_audio_folder
+from util import check_and_create_folder, get_audio_folder, serialize_json_object
+
+llm = ChatOpenAI(
+    api_key="ollama",
+    model="llama3.2",
+    base_url="http://localhost:11434/v1/",
+    temperature=0,
+    max_tokens=2000,
+)
 
 check_and_create_folder()
 
@@ -61,37 +68,29 @@ async def extract(req: dict) -> dict:
         "reason": ""
     }
 
-    if req is None or 'schema' not in req or 'text' not in req:
+    if req is None or 'format' not in req or 'text' not in req or 'instruction' not in req:
         result['reason'] = "parameter is invalid"
         return result
     
     print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') +" start " + req['action'])
 
     text = req['text']
-    schema = req['schema']
-    print(text, schema)
+    format = req['format']
+    json_format = serialize_json_object(format)
+    instruction =  req['instruction']
+    print(text)
     try:
+        # Define the messages for extraction
+        messages = [
+            ("system", f"You are a helpful bank teller, you know about bank services, you can help to extract data according to {json_format}"),
+            ("human", f"{instruction} according to {text}")
+        ]
+
         # Get the extracted data
-        response = chat(
-            model="llama3.2",
-            messages=[
-                {
-                    "role": "user",
-                    "content": text,
-                },
-                {
-                    "role": "user",
-                    "content": "set property 'answer' to true if %{text} contains yes",
-                },
-                {
-                    "role": "user",
-                    "content": "set property 'cancelled' to true if %{text} contains cancel or exit, otherwise set to false",
-                }
-            ],
-            format= getJsonSchema(schema)
-        )
+        response = llm.invoke(messages)
+        print(response)
         result['success'] = True
-        result['data'] = response.message.content
+        result['data'] = response.content
     except Exception as error:
         print("exception occurs", error)
         raise HTTPException(status_code=500, detail='Something went wrong')
@@ -186,21 +185,22 @@ async def transcribe(req: dict) -> dict:
     file_path_full = ""
     try:    
         temp = file_path.split('.')
-        print('temp', temp)
-
         file_path_full = './' + temp[0] + '/' + temp[1]+ '/'+ temp[2] + '.' + temp[3]
+        if not os.path.exists(file_path_full) or file_path is None:
+            raise HTTPException(status_code=404, detail="File not found")
     except:
-        raise HTTPException(status_code=404, detail="File not found")
-    
-    if not os.path.exists(file_path_full) or file_path is None:
         raise HTTPException(status_code=404, detail="File not found")
     
     try:
         # Load the pipeline for automatic speech recognition (ASR)
-        asr_pipeline = pipeline(task="automatic-speech-recognition", model="openai/whisper-small")
-
+        # asr_pipeline = pipeline(task="automatic-speech-recognition", model="openai/whisper-small")
         # Perform the transcription
-        response = asr_pipeline(file_path_full)
+        # response = asr_pipeline(file_path_full)
+        
+        # Load the Whisper model
+        model = whisper.load_model("small")
+        # Transcribe the audio file
+        response = model.transcribe(file_path_full, fp16=False, language="en")
         if response is not None:
             result['success'] = True
             result['transcript'] = response["text"]
@@ -250,3 +250,7 @@ async def generate_audio(req: dict) -> dict:
 
     print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') +" complete " + req['action'])
     return result
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
