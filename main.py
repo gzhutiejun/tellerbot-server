@@ -202,7 +202,7 @@ async def transcribe(req: dict) -> dict:
         # Load the Whisper model
         model = whisper.load_model("small")
         # Transcribe the audio file
-        response = model.transcribe(file_path_full, fp16=False, language="en",temperature=1)
+        response = model.transcribe(file_path_full, fp16=False,temperature=1)
         if response is not None:
             result['success'] = True
             result['transcript'] = response["text"]
@@ -232,9 +232,9 @@ async def generate_audio(req: dict) -> dict:
     try:
         # Define the text to be synthesized
         text = req['text']
-        lang = req['lang'] if 'lang' in req else 'en'
+        language = req['language'] if 'language' in req else 'en'
         # Initialize the TTS engine
-        tts = gTTS(text=text, lang=lang)
+        tts = gTTS(text=text, lang=language)
         
         # Save the speech to an audio file
  
