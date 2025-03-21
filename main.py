@@ -16,7 +16,7 @@ llm = ChatOpenAI(
     api_key="ollama",
     model="llama3.2",
     base_url="http://localhost:11434/v1/",
-    temperature=0,
+    temperature=0.0,
     max_tokens=2000,
 )
 
@@ -89,7 +89,6 @@ async def extract(req: dict) -> dict:
 
         # Get the extracted data
         response = llm.invoke(messages)
-        print(response)
         result['success'] = True
         result['data'] = response.content
     except Exception as error:
@@ -178,9 +177,14 @@ async def transcribe(req: dict) -> dict:
         result['reason'] = "parameter is invalid"
         return result
     
-    print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') +" transcribe start")
+    print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " transcribe start")
 
     file_path = req['file_path']
+    initial_prompt =  "This is a conversation about banking services."
+
+    if "initial_prompt" in req:
+        initial_prompt =  req['initial_prompt']
+
     if file_path is None:
         raise HTTPException(status_code=404, detail="File not found")
 
@@ -194,15 +198,17 @@ async def transcribe(req: dict) -> dict:
         raise HTTPException(status_code=404, detail="File not found")
     
     try:
-        # Load the pipeline for automatic speech recognition (ASR)
-        # asr_pipeline = pipeline(task="automatic-speech-recognition", model="openai/whisper-small")
-        # Perform the transcription
-        # response = asr_pipeline(file_path_full)
-        
         # Load the Whisper model
         model = whisper.load_model("small")
-        # Transcribe the audio file
-        response = model.transcribe(file_path_full, fp16=False,temperature=1)
+        # Transcribe the audio file with float parameters
+        response = model.transcribe(
+            file_path_full, 
+            task="transcribe", 
+            language="en", 
+            temperature=0.0,
+            fp16=False,  
+            initial_prompt=initial_prompt
+        )
         if response is not None:
             result['success'] = True
             result['transcript'] = response["text"]
@@ -211,9 +217,7 @@ async def transcribe(req: dict) -> dict:
         print("exception occurs", error)
         raise HTTPException(status_code=500, detail='Something went wrong')
 
-    # Print the transcribed text
-    #print("Transcribed text:", result["text"])
-    print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') +" transcribe complete ")
+    print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " transcribe complete")
     return result
 
 @app.post("/generateaudio/")
