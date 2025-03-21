@@ -103,7 +103,6 @@ async def upload(file: UploadFile = File(...)):
     current_time = datetime.datetime.now()
 
     full_file_path = get_audio_folder(current_time) + '/' + current_time.strftime('%H%M%S-customer')+".mp3"
-    print("file size:",file.size)
     try:
         with open(full_file_path, 'wb') as f:
             content = await file.read()
@@ -180,10 +179,10 @@ async def transcribe(req: dict) -> dict:
     print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " transcribe start")
 
     file_path = req['file_path']
-    initial_prompt =  "This is a conversation about banking services."
 
-    if "initial_prompt" in req:
-        initial_prompt =  req['initial_prompt']
+    initial_prompt =  req['initial_prompt'] if "initial_prompt" in req else "This is a conversation about banking services."
+
+    language = req['language'] if 'language' in req else 'en'
 
     if file_path is None:
         raise HTTPException(status_code=404, detail="File not found")
@@ -204,7 +203,7 @@ async def transcribe(req: dict) -> dict:
         response = model.transcribe(
             file_path_full, 
             task="transcribe", 
-            language="en", 
+            language=language, 
             temperature=0.0,
             fp16=False,  
             initial_prompt=initial_prompt
