@@ -73,19 +73,28 @@ async def extract(req: dict) -> dict:
         return result
     
     print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " extract start")
-
     text = req['text']
     format = req['format']
     json_format = serialize_json_object(format)
     instruction = req['instruction']
+    language = req['language'] if 'language' in req else 'en'
     print(text)
     try:
+
         # Define the messages for extraction
-        messages = [
-            ("system", f"You are ChatOpenAI, a helpful assistant. Your task is to extract structured data from user messages. "
-                       f"Your task is to extract information from user-provided text and oAlways respond with the extracted data in a JSON format as {json_format}"),
-            ("human", f"Here is the instruction: {instruction}; if cancel or exit, set cancel property to true; If there is no mentioned data, return null. Extract the data from the following text: {text}" )
-        ]
+        messages = []
+        if (language == "zh"):
+            messages = [
+                ("system", f"You are ChatOpenAI, a helpful assistant. Your task is to extract structured data from user messages. "
+                        f"Your task is to extract information from user-provided text and only respond with JSON object as {json_format}"),
+                ("human", f"Here is the instruction: {instruction}; if cancel or exit, set cancel property to true; If there is no mentioned data, return null. Translate and extract the data from the following text: {text}" )
+            ]
+        else:      
+            messages = [
+                ("system", f"You are ChatOpenAI, a helpful assistant. Your task is to extract structured data from user messages. "
+                        f"Your task is to extract information from user-provided text and only respond with JSON object as {json_format}"),
+                ("human", f"Here is the instruction: {instruction}; if cancel or exit, set cancel property to true; If there is no mentioned data, return null. Extract the data from the following text: {text}" )
+            ]
 
         # Get the extracted data
         response = llm.invoke(messages)
