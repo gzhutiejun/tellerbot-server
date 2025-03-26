@@ -16,7 +16,7 @@ llm = ChatOpenAI(
     api_key="ollama",
     model="llama3.2",
     base_url="http://localhost:11434/v1/",
-    temperature=0.0,
+    temperature=0,
     max_tokens=2000,
 )
 
@@ -204,7 +204,7 @@ async def transcribe(req: dict) -> dict:
             file_path_full, 
             task="transcribe", 
             language=language, 
-            temperature=0.0,
+            temperature=0,
             fp16=False,  
             initial_prompt=initial_prompt
         )
