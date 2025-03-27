@@ -77,13 +77,11 @@ async def extract(req: dict) -> dict:
     format = req['format']
     json_format = serialize_json_object(format)
     instruction = req['instruction']
-    language = req['language']
-    #print("language",language)
+    language = req['language'] if 'language' in req else 'en'
     user_text = text
     if (language != "en"):
         user_text = await translate_text_english(text, "zh-cn")
-        
-    #print("user_text",user_text)
+    print("user_text",user_text)    
     try:
 
         # Define the messages for extraction
@@ -189,7 +187,8 @@ async def transcribe(req: dict) -> dict:
     initial_prompt =  req['initial_prompt'] if "initial_prompt" in req else "This is a conversation about banking services."
 
     language = req['language'] if 'language' in req else 'en'
-
+    language = language[0:2]
+    print("transcribe language",language)
     if file_path is None:
         raise HTTPException(status_code=404, detail="File not found")
 
@@ -242,6 +241,8 @@ async def generate_audio(req: dict) -> dict:
         # Define the text to be synthesized
         text = req['text']
         language = req['language'] if 'language' in req else 'en'
+        #language = language[0:2]
+        print(language)
         # Initialize the TTS engine
         tts = gTTS(text=text, lang=language)
         
