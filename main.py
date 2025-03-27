@@ -10,7 +10,7 @@ import os
 import whisper
 from langchain_openai import ChatOpenAI
 
-from util import check_and_create_folder, detect_language, get_audio_folder, serialize_json_object, translate_text_english
+from util import check_and_create_folder, get_audio_folder, serialize_json_object, translate_text_english
 
 llm = ChatOpenAI(
     api_key="ollama",
