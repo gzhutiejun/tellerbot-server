@@ -1,6 +1,7 @@
 import datetime
 import os
 import json
+from googletrans import Translator
 
 audio_folder = "audio"
 def check_and_create_folder(folder_path=audio_folder):
@@ -22,4 +23,16 @@ def serialize_json_object(jsonObj: dict):
         return ret
     except Exception as error:
         print("serialize_json_object", error)
+        return ""
+    
+async def translate_text_english(input_text, src_language):
+    try:
+        # Initialize the Translator
+        translator = Translator()
+
+        # Perform translation asynchronously
+        translated = await translator.translate(input_text, src=src_language, dest="en")
+        return translated.text  # Ensure we access the 'text' attribute of the result
+    except Exception as e:
+        print(f"translate_text_googletrans: An error occurred: {e}")
         return ""
