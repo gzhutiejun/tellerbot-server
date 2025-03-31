@@ -188,7 +188,7 @@ async def transcribe(req: dict) -> dict:
 
     language = req['language'] if 'language' in req else 'en'
     language = language[0:2]
-    print("transcribe language",language)
+    #print("transcribe",language)
     if file_path is None:
         raise HTTPException(status_code=404, detail="File not found")
 
@@ -216,6 +216,7 @@ async def transcribe(req: dict) -> dict:
         if response is not None:
             result['success'] = True
             result['transcript'] = response["text"]
+            print("transcript output", response["text"])
     except Exception as error:
         result['reason'] = "exception"
         print("exception occurs", error)
@@ -241,7 +242,7 @@ async def generate_audio(req: dict) -> dict:
         # Define the text to be synthesized
         text = req['text']
         language = req['language'] if 'language' in req else 'en'
-        #language = language[0:2]
+        language = language[0:2]
         print(language)
         # Initialize the TTS engine
         tts = gTTS(text=text, lang=language)
