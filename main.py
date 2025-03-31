@@ -68,14 +68,13 @@ async def extract(req: dict) -> dict:
         "reason": ""
     }
 
-    if req is None or 'format' not in req or 'text' not in req or 'instruction' not in req:
+    if req is None or 'schema' not in req or 'text' not in req or 'instruction' not in req:
         result['reason'] = "parameter is invalid"
         return result
     
     print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " extract start")
     text = req['text']
-    format = req['format']
-    json_format = serialize_json_object(format)
+    schema = req['schema']
     instruction = req['instruction']
     language = req['language'] if 'language' in req else 'en'
     user_text = text
@@ -86,9 +85,11 @@ async def extract(req: dict) -> dict:
 
         # Define the messages for extraction
         messages = [
-            ("system", f"You are ChatOpenAI, a helpful assistant. Your task is to extract structured data from user messages. "
-                    f"Your task is to extract information from user-provided text and only respond with JSON object as {json_format}"),
-            ("human", f"Here is the instruction: {instruction}; if cancel or exit or no need, set cancel property to true; If there is no mentioned data, return null. Extract the data from the following text: {user_text}" )
+            ("system", f"You are ChatOpenAI, a helpful assistant. "
+                    f"Your task is to extract structured data from user messages and only respond with JSON object as {serialize_json_object(schema)}"),
+            ("human", "Extract following data:"
+             f"{instruction}"
+             f"Text: {user_text}")
         ]
 
         # Get the extracted data
