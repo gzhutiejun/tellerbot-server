@@ -88,7 +88,7 @@ async def extract(req: dict) -> dict:
         messages = [
             ("system", f"You are ChatOpenAI, a helpful assistant. Your task is to extract structured data from user messages. "
                     f"Your task is to extract information from user-provided text and only respond with JSON object as {json_format}"),
-            ("human", f"Here is the instruction: {instruction}; if cancel or exit, set cancel property to true; If there is no mentioned data, return null. Extract the data from the following text: {user_text}" )
+            ("human", f"Here is the instruction: {instruction}; if cancel or exit or no need, set cancel property to true; If there is no mentioned data, return null. Extract the data from the following text: {user_text}" )
         ]
 
         # Get the extracted data
