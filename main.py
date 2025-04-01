@@ -9,16 +9,20 @@ from gtts import gTTS
 import os
 import whisper
 from langchain_openai import ChatOpenAI
+from langchain_ollama import ChatOllama
 
-from util import check_and_create_folder, get_audio_folder, serialize_json_object, translate_text_english
+from helper import check_and_create_folder, get_audio_folder, serialize_json_object, translate_text_english
 
-llm = ChatOpenAI(
-    api_key="ollama",
-    model="llama3.2",
-    base_url="http://localhost:11434/v1/",
-    temperature=0,
-    max_tokens=2000,
-)
+# llm = ChatOpenAI(
+#     api_key="ollama",
+#     model="llama3.2",
+#     base_url="http://localhost:11434/v1/",
+#     temperature=0,
+#     max_tokens=2000,
+# )
+
+local_llm_name = "llama3.2"
+llm = ChatOllama(model=local_llm_name, temperature=0, format="json")
 
 check_and_create_folder()
 
@@ -93,6 +97,7 @@ async def extract(req: dict) -> dict:
         ]
 
         # Get the extracted data
+        # response = llm.invoke(messages)
         response = llm.invoke(messages)
         result['success'] = True
         result['data'] = response.content
