@@ -8,11 +8,12 @@ from fastapi.responses import StreamingResponse
 from gtts import gTTS
 import os
 import whisper
-from langchain_openai import ChatOpenAI
+# from langchain_openai import ChatOpenAI
 from langchain_ollama import ChatOllama
 
 from helper import check_and_create_folder, get_audio_folder, serialize_json_object, translate_text_english
 
+# openai approach
 # llm = ChatOpenAI(
 #     api_key="ollama",
 #     model="llama3.2",
@@ -21,6 +22,7 @@ from helper import check_and_create_folder, get_audio_folder, serialize_json_obj
 #     max_tokens=2000,
 # )
 
+#ollama approach
 local_llm_name = "llama3.2"
 llm = ChatOllama(model=local_llm_name, temperature=0, format="json")
 
@@ -89,7 +91,7 @@ async def extract(req: dict) -> dict:
 
         # Define the messages for extraction
         messages = [
-            ("system", f"You are ChatOpenAI, a helpful assistant. "
+            ("system", f"You are a helpful assistant. "
                     f"Your task is to extract structured data from user messages and only respond with JSON object as {serialize_json_object(schema)}"),
             ("human", "Extract following data:"
              f"{instruction}"
