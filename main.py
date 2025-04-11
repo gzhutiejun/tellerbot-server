@@ -11,7 +11,7 @@ import whisper
 # from langchain_openai import ChatOpenAI
 from langchain_ollama import ChatOllama
 
-from helper import check_and_create_folder, get_audio_folder, serialize_json_object, translate_text_english
+from helper import check_and_create_folder, check_cuda_support, get_audio_folder, serialize_json_object, translate_text_english
 
 # openai approach
 # llm = ChatOpenAI(
@@ -25,7 +25,7 @@ from helper import check_and_create_folder, get_audio_folder, serialize_json_obj
 #ollama approach
 local_llm_name = "llama3.2"
 llm = ChatOllama(model=local_llm_name, temperature=0, format="json")
-
+model = whisper.load_model("small", device=check_cuda_support())
 check_and_create_folder()
 
 app = FastAPI()
@@ -211,7 +211,6 @@ async def transcribe(req: dict) -> dict:
     
     try:
         # Load the Whisper model
-        model = whisper.load_model("small")
         # Transcribe the audio file with float parameters
         response = model.transcribe(
             file_path_full, 

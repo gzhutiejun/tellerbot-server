@@ -1,6 +1,7 @@
 import datetime
 import os
 import json
+import torch
 from googletrans import Translator
 
 audio_folder = "audio"
@@ -36,3 +37,12 @@ async def translate_text_english(input_text, src_language):
     except Exception as e:
         print(f"translate_text_googletrans: An error occurred: {e}")
         return ""
+
+def check_cuda_support():
+    print("torch version:", torch.__version__)
+    if torch.cuda.is_available():
+        print(f"CUDA Device Name: {torch.cuda.get_device_name(0)}")
+        return "cuda"
+    else:
+        print("CUDA is not supported on this device.")
+        return "cpu"
