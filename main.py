@@ -25,7 +25,7 @@ from helper import check_and_create_folder, check_cuda_support, get_audio_folder
 #ollama approach
 local_llm_name = "llama3.2"
 llm = ChatOllama(model=local_llm_name, temperature=0, format="json")
-model = whisper.load_model("small", device=check_cuda_support())
+
 check_and_create_folder()
 
 app = FastAPI()
@@ -211,6 +211,7 @@ async def transcribe(req: dict) -> dict:
     
     try:
         # Load the Whisper model
+        model = whisper.load_model("small", device=check_cuda_support())
         # Transcribe the audio file with float parameters
         response = model.transcribe(
             file_path_full, 
