@@ -3,7 +3,7 @@
 import datetime
 import uuid
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, File, UploadFile, HTTPException, logger
 from fastapi.responses import StreamingResponse
 from gtts import gTTS
 import os
@@ -11,7 +11,7 @@ import whisper
 # from langchain_openai import ChatOpenAI
 from langchain_ollama import ChatOllama
 
-from helper import check_and_create_folder, check_cuda_support, get_audio_folder, serialize_json_object, translate_text_english
+from helper import check_and_create_folder, check_cuda_support, get_audio_folder, serialize_json_object, translate_text_english, logger
 
 # openai approach
 # llm = ChatOpenAI(
@@ -61,7 +61,7 @@ async def close_session(req: dict) -> dict:
     id = None
     if "session_id" in req:
         id = req['session_id']
-    print(id)
+    logger(id)
     return {
         "success": True,
         "session_id": id
@@ -78,7 +78,7 @@ async def extract(req: dict) -> dict:
         result['reason'] = "parameter is invalid"
         return result
     
-    print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " extract start")
+    logger( "extract start")
     text = req['text']
     schema = req['schema']
     instruction = req['instruction']
@@ -86,7 +86,7 @@ async def extract(req: dict) -> dict:
     user_text = text
     if (language != "en"):
         user_text = await translate_text_english(text, "zh-cn")
-    print("user_text",user_text)    
+    logger("user_text",user_text)    
     try:
 
         # Define the messages for extraction
@@ -104,14 +104,15 @@ async def extract(req: dict) -> dict:
         result['success'] = True
         result['data'] = response.content
     except Exception as error:
-        print("exception occurs", error)
+        logger("exception occurs", error)
         raise HTTPException(status_code=500, detail='Something went wrong')
     
-    print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " extract complete ")
+    logger( "extract complete ")
     return result
 
 @app.post("/upload")
 async def upload(file: UploadFile = File(...)):
+    logger("upload start")
     current_time = datetime.datetime.now()
 
     full_file_path = get_audio_folder(current_time) + '/' + current_time.strftime('%H%M%S-customer')+".mp3"
@@ -120,15 +121,16 @@ async def upload(file: UploadFile = File(...)):
             content = await file.read()
             f.write(content)
     except Exception as error:
-        print("exception occurs", error)
+        logger("exception occurs", error)
         raise HTTPException(status_code=500, detail='Something went wrong')
     finally:
         file.file.close()
+    logger("upload complete")
     return {"success": True, "file_path": full_file_path.replace('/','.')}
 
 @app.get("/download/{file_path}")
 async def download_file(file_path: str, range: str = None) -> StreamingResponse:
-    print("download", file_path)
+    logger("download", file_path)
 
     if file_path is None:
         raise HTTPException(status_code=404, detail="File not found")
@@ -188,7 +190,7 @@ async def transcribe(req: dict) -> dict:
         result['reason'] = "parameter is invalid"
         return result
     
-    print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " transcribe start")
+    logger( "transcribe start")
 
     file_path = req['file_path']
 
@@ -196,7 +198,7 @@ async def transcribe(req: dict) -> dict:
 
     language = req['language'] if 'language' in req else 'en'
     language = language[0:2]
-    #print("transcribe",language)
+    #logger("transcribe",language)
     if file_path is None:
         raise HTTPException(status_code=404, detail="File not found")
 
@@ -224,13 +226,13 @@ async def transcribe(req: dict) -> dict:
         if response is not None:
             result['success'] = True
             result['transcript'] = response["text"]
-            print("transcript output", response["text"])
+            logger("transcript output", response["text"])
     except Exception as error:
         result['reason'] = "exception"
-        print("exception occurs", error)
+        logger("exception occurs", error)
         raise HTTPException(status_code=500, detail='Something went wrong')
 
-    print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " transcribe complete")
+    logger( "transcribe complete")
     return result
 
 @app.post("/generateaudio/")
@@ -244,14 +246,14 @@ async def generate_audio(req: dict) -> dict:
         result['reason'] = "parameter is invalid"
         return result
     
-    print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') +" generateaudio start ")
+    logger( "generateaudio start ")
 
     try:
         # Define the text to be synthesized
         text = req['text']
         language = req['language'] if 'language' in req else 'en'
         language = language[0:2]
-        print(language)
+        logger(language)
         # Initialize the TTS engine
         tts = gTTS(text=text, lang=language)
         
@@ -266,10 +268,10 @@ async def generate_audio(req: dict) -> dict:
         tts.save(file_path + '/'+ file_name)
     except Exception as error:
         result['reason'] = "exception"
-        print("exception occurs", error)
+        logger("exception occurs", error)
         raise HTTPException(status_code=500, detail='Something went wrong')
 
-    print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') +" generateaudio complete ")
+    logger("generateaudio complete ")
     return result
 
 if __name__ == "__main__":

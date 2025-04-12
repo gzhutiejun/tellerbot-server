@@ -39,10 +39,20 @@ async def translate_text_english(input_text, src_language):
         return ""
 
 def check_cuda_support():
-    print("torch version:", torch.__version__)
     if torch.cuda.is_available():
-        print(f"CUDA Device Name: {torch.cuda.get_device_name(0)}")
         return "cuda"
     else:
-        print("CUDA is not supported on this device.")
         return "cpu"
+    
+def logger(*args):
+    print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f'), end=" ")
+    if len(args) == 0:
+        return
+    for arg in args:
+        if isinstance(arg, dict):
+            print(json.dumps(arg, ensure_ascii=False))
+        else:
+            print(arg)
+    return
+
+    
