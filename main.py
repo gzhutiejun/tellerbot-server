@@ -13,6 +13,11 @@ from langchain_ollama import ChatOllama
 
 from helper import check_and_create_folder, check_cuda_support, get_audio_folder, serialize_json_object, translate_text_english, logger
 
+from alibaba_api import send_audio_and_get_text
+
+ali_app_key = "yWFqGNJUecDlp3pF"
+ali_token = "c698ef856c97440bb1780e7de61e1bc8"
+
 # openai approach
 # llm = ChatOpenAI(
 #     api_key="ollama",
@@ -115,7 +120,7 @@ async def upload(file: UploadFile = File(...)):
     logger("upload start")
     current_time = datetime.datetime.now()
 
-    full_file_path = get_audio_folder(current_time) + '/' + current_time.strftime('%H%M%S-customer')+".mp3"
+    full_file_path = get_audio_folder(current_time) + '/' + current_time.strftime('%H%M%S-customer')+".wav"
     try:
         with open(full_file_path, 'wb') as f:
             content = await file.read()
@@ -213,20 +218,28 @@ async def transcribe(req: dict) -> dict:
     
     try:
         # Load the Whisper model
-        model = whisper.load_model("small", device=check_cuda_support())
-        # Transcribe the audio file with float parameters
-        response = model.transcribe(
-            file_path_full, 
-            task="transcribe", 
-            language=language, 
-            temperature=0,
-            fp16=False,  
-            initial_prompt=initial_prompt
-        )
-        if response is not None:
+        # model = whisper.load_model("small", device=check_cuda_support())
+        # # Transcribe the audio file with float parameters
+        # response = model.transcribe(
+        #     file_path_full, 
+        #     task="transcribe", 
+        #     language=language, 
+        #     temperature=0,
+        #     fp16=False,  
+        #     initial_prompt=initial_prompt
+        # )
+        # if response is not None:
+        #     result['success'] = True
+        #     result['transcript'] = response["text"]
+        #     logger("transcript output", response["text"])
+
+        text = send_audio_and_get_text(file_path_full, ali_app_key, ali_token)
+        if text is not None:
             result['success'] = True
-            result['transcript'] = response["text"]
-            logger("transcript output", response["text"])
+            result['transcript'] = text
+            logger("transcript output", text)
+        else:
+            result['reason'] = "transcription failed"
     except Exception as error:
         result['reason'] = "exception"
         logger("exception occurs", error)
@@ -262,7 +275,7 @@ async def generate_audio(req: dict) -> dict:
         result['success'] = True
         current_time = datetime.datetime.now()
         file_path = get_audio_folder(current_time)
-        file_name = current_time.strftime('%H%M%S-teller')+".mp3"
+        file_name = current_time.strftime('%H%M%S-teller')+".wav"
         result['file_name'] = file_path.replace('/','.') + '.'+ file_name
 
         tts.save(file_path + '/'+ file_name)
