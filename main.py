@@ -11,13 +11,13 @@ import whisper
 # from langchain_openai import ChatOpenAI
 from langchain_ollama import ChatOllama
 
-from helper import check_and_create_folder, check_cuda_support, get_audio_folder, serialize_json_object, translate_text_english, logger
+from helper import check_and_create_folder, check_cuda_support, get_audio_folder, serialize_json_object, translate_text_english, logger_service
 
-from alibaba_api import send_audio_and_get_text
+from alibaba_api import ali_asr, ali_tts
 
-ali_app_key = "yWFqGNJUecDlp3pF"
-ali_token = "c698ef856c97440bb1780e7de61e1bc8"
-
+ali_token = os.environ.get("ALI_TOKEN")
+ali_asr1_app_key = os.environ.get("ALI_ASR1_APPKEY")
+ali_asr2_app_key = os.environ.get("ALI_ASR2_APPKEY")
 # openai approach
 # llm = ChatOpenAI(
 #     api_key="ollama",
@@ -66,7 +66,7 @@ async def close_session(req: dict) -> dict:
     id = None
     if "session_id" in req:
         id = req['session_id']
-    logger(id)
+    logger_service(id)
     return {
         "success": True,
         "session_id": id
@@ -83,7 +83,7 @@ async def extract(req: dict) -> dict:
         result['reason'] = "parameter is invalid"
         return result
     
-    logger( "extract start")
+    logger_service( "extract start")
     text = req['text']
     schema = req['schema']
     instruction = req['instruction']
@@ -91,7 +91,7 @@ async def extract(req: dict) -> dict:
     user_text = text
     if (language != "en"):
         user_text = await translate_text_english(text, "zh-cn")
-    logger("user_text",user_text)    
+    logger_service("user_text",user_text)    
     try:
 
         # Define the messages for extraction
@@ -109,15 +109,15 @@ async def extract(req: dict) -> dict:
         result['success'] = True
         result['data'] = response.content
     except Exception as error:
-        logger("exception occurs", error)
+        logger_service("exception occurs", error)
         raise HTTPException(status_code=500, detail='Something went wrong')
     
-    logger( "extract complete ")
+    logger_service( "extract complete ")
     return result
 
 @app.post("/upload")
 async def upload(file: UploadFile = File(...)):
-    logger("upload start")
+    logger_service("upload start")
     current_time = datetime.datetime.now()
 
     full_file_path = get_audio_folder(current_time) + '/' + current_time.strftime('%H%M%S-customer')+".wav"
@@ -126,16 +126,16 @@ async def upload(file: UploadFile = File(...)):
             content = await file.read()
             f.write(content)
     except Exception as error:
-        logger("exception occurs", error)
+        logger_service("exception occurs", error)
         raise HTTPException(status_code=500, detail='Something went wrong')
     finally:
         file.file.close()
-    logger("upload complete")
+    logger_service("upload complete")
     return {"success": True, "file_path": full_file_path.replace('/','.')}
 
 @app.get("/download/{file_path}")
 async def download_file(file_path: str, range: str = None) -> StreamingResponse:
-    logger("download", file_path)
+    logger_service("download", file_path)
 
     if file_path is None:
         raise HTTPException(status_code=404, detail="File not found")
@@ -195,14 +195,16 @@ async def transcribe(req: dict) -> dict:
         result['reason'] = "parameter is invalid"
         return result
     
-    logger( "transcribe start")
+    logger_service( "transcribe start")
 
     file_path = req['file_path']
 
     initial_prompt =  req['initial_prompt'] if "initial_prompt" in req else "This is a conversation about banking services."
 
     language = req['language'] if 'language' in req else 'en'
-    language = language[0:2]
+    ali_asr_app_key = ali_asr1_app_key
+    if language.lower() == "zh-hk":
+        ali_asr_app_key = ali_asr2_app_key
     #logger("transcribe",language)
     if file_path is None:
         raise HTTPException(status_code=404, detail="File not found")
@@ -233,19 +235,19 @@ async def transcribe(req: dict) -> dict:
         #     result['transcript'] = response["text"]
         #     logger("transcript output", response["text"])
 
-        text = send_audio_and_get_text(file_path_full, ali_app_key, ali_token)
+        text = ali_asr(file_path_full, ali_asr_app_key, ali_token)
         if text is not None:
             result['success'] = True
             result['transcript'] = text
-            logger("transcript output", text)
+            logger_service("transcript output", text)
         else:
             result['reason'] = "transcription failed"
     except Exception as error:
         result['reason'] = "exception"
-        logger("exception occurs", error)
+        logger_service("exception occurs", error)
         raise HTTPException(status_code=500, detail='Something went wrong')
 
-    logger( "transcribe complete")
+    logger_service( "transcribe complete")
     return result
 
 @app.post("/generateaudio/")
@@ -259,32 +261,41 @@ async def generate_audio(req: dict) -> dict:
         result['reason'] = "parameter is invalid"
         return result
     
-    logger( "generateaudio start ")
+    logger_service( "generateaudio start ")
 
     try:
         # Define the text to be synthesized
         text = req['text']
         language = req['language'] if 'language' in req else 'en'
-        language = language[0:2]
-        logger(language)
+        ali_asr_app_key = ali_asr1_app_key
+        if language.lower() == "zh-hk":
+            ali_asr_app_key = ali_asr2_app_key
+
+        logger_service(language)
         # Initialize the TTS engine
-        tts = gTTS(text=text, lang=language)
+        #tts = gTTS(text=text, lang=language)
         
         # Save the speech to an audio file
  
-        result['success'] = True
-        current_time = datetime.datetime.now()
-        file_path = get_audio_folder(current_time)
-        file_name = current_time.strftime('%H%M%S-teller')+".wav"
-        result['file_name'] = file_path.replace('/','.') + '.'+ file_name
+        # result['success'] = True
+        # current_time = datetime.datetime.now()
+        # file_path = get_audio_folder(current_time)
+        # file_name = current_time.strftime('%H%M%S-teller')+".wav"
+        # result['file_name'] = file_path.replace('/','.') + '.'+ file_name
+        #tts.save(file_path + '/'+ file_name)
 
-        tts.save(file_path + '/'+ file_name)
+        file_name = ali_tts(text, ali_asr_app_key, ali_token)
+        if file_name is not None:
+            result['success'] = True
+            result['file_name'] = file_name
+        else:
+            result['reason'] = "audio generation failed"
     except Exception as error:
         result['reason'] = "exception"
-        logger("exception occurs", error)
+        logger_service("exception occurs", error)
         raise HTTPException(status_code=500, detail='Something went wrong')
 
-    logger("generateaudio complete ")
+    logger_service("generateaudio complete ")
     return result
 
 if __name__ == "__main__":

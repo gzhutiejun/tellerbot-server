@@ -44,7 +44,7 @@ def check_cuda_support():
     else:
         return "cpu"
     
-def logger(*args):
+def logger_service(*args):
     print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f'), end=" ")
     if len(args) == 0:
         return
