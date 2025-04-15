@@ -86,9 +86,9 @@ def ali_tts(text: str, app_key: str, token: str, url: str = "https://nls-gateway
         return ""
 
 
-ali_token = os.environ.get("ALI_TOKEN")
-ali_asr1_app_key = os.environ.get("ALI_ASR1_APPKEY")
-ali_asr2_app_key = os.environ.get("ALI_ASR2_APPKEY")
-print(ali_token,ali_asr1_app_key,ali_asr2_app_key)
-res = ali_tts("您好，请问您需要什么服务？", ali_asr1_app_key, ali_token)
-print(res)
+# ali_token = os.environ.get("ALI_TOKEN")
+# ali_asr1_app_key = os.environ.get("ALI_ASR1_APPKEY")
+# ali_asr2_app_key = os.environ.get("ALI_ASR2_APPKEY")
+# print(ali_token,ali_asr1_app_key,ali_asr2_app_key)
+# res = ali_tts("您好，请问您需要什么服务？", ali_asr1_app_key, ali_token)
+# print(res)
