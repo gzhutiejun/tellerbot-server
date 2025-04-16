@@ -5,7 +5,6 @@ import uuid
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, File, UploadFile, HTTPException, logger
 from fastapi.responses import StreamingResponse
-from gtts import gTTS
 import os
 import whisper
 # from langchain_openai import ChatOpenAI
