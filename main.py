@@ -92,7 +92,12 @@ async def extract(req: dict) -> dict:
     user_text = text
     if (language != "en"):
         user_text = await translate_text_english(text, "zh-cn")
+
     logger_service("user_text",user_text)    
+    if (user_text != None and (user_text.lower().find("cancel") >= 0 or user_text.lower().find("exit") >= 0 or user_text.lower().find("no need") >= 0)):
+        result['success'] = True
+        result['data'] = {"cancel": True}
+        return result
     try:
 
         # Define the messages for extraction
