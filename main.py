@@ -6,14 +6,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, File, UploadFile, HTTPException, logger
 from fastapi.responses import StreamingResponse
 import os
-import whisper
+
 # from langchain_openai import ChatOpenAI
 from langchain_ollama import ChatOllama
 
 from helper import check_and_create_folder, check_cuda_support, get_audio_folder, serialize_json_object, translate_text_english, logger_service
 
 from alibaba_api import ali_asr, ali_tts
+from local_api import local_asr, local_tts
 
+use_local_api = True
 ali_token = os.environ.get("ALI_TOKEN")
 ali_asr1_app_key = os.environ.get("ALI_ASR1_APPKEY")
 ali_asr2_app_key = os.environ.get("ALI_ASR2_APPKEY")
@@ -198,13 +200,11 @@ async def transcribe(req: dict) -> dict:
 
     file_path = req['file_path']
 
-    initial_prompt =  req['initial_prompt'] if "initial_prompt" in req else "This is a conversation about banking services."
-
     language = req['language'] if 'language' in req else 'en'
     ali_asr_app_key = ali_asr1_app_key
     if language.lower() == "zh-hk":
         ali_asr_app_key = ali_asr2_app_key
-    #logger("transcribe",language)
+
     if file_path is None:
         raise HTTPException(status_code=404, detail="File not found")
 
@@ -218,23 +218,11 @@ async def transcribe(req: dict) -> dict:
         raise HTTPException(status_code=404, detail="File not found")
     
     try:
-        # Load the Whisper model
-        # model = whisper.load_model("small", device=check_cuda_support())
-        # # Transcribe the audio file with float parameters
-        # response = model.transcribe(
-        #     file_path_full, 
-        #     task="transcribe", 
-        #     language=language, 
-        #     temperature=0,
-        #     fp16=False,  
-        #     initial_prompt=initial_prompt
-        # )
-        # if response is not None:
-        #     result['success'] = True
-        #     result['transcript'] = response["text"]
-        #     logger("transcript output", response["text"])
-
-        text = ali_asr(file_path_full, ali_asr_app_key, ali_token)
+        text = None
+        if use_local_api:
+            text = local_asr(file_path_full, language)
+        else:
+            text = ali_asr(file_path_full, ali_asr_app_key, ali_token)
         if text is not None:
             result['success'] = True
             result['transcript'] = text
@@ -271,19 +259,12 @@ async def generate_audio(req: dict) -> dict:
             ali_asr_app_key = ali_asr2_app_key
 
         logger_service(language)
-        # Initialize the TTS engine
-        #tts = gTTS(text=text, lang=language)
         
-        # Save the speech to an audio file
- 
-        # result['success'] = True
-        # current_time = datetime.datetime.now()
-        # file_path = get_audio_folder(current_time)
-        # file_name = current_time.strftime('%H%M%S-teller')+".wav"
-        # result['file_name'] = file_path.replace('/','.') + '.'+ file_name
-        #tts.save(file_path + '/'+ file_name)
-
-        file_name = ali_tts(text, ali_asr_app_key, ali_token)
+        file_name = ""
+        if use_local_api:
+            file_name = local_tts(text, language)
+        else:
+            file_name = ali_tts(text, ali_asr_app_key, ali_token)
         if file_name is not None:
             result['success'] = True
             result['file_name'] = file_name
